@@ -88,13 +88,13 @@ module led_matrix(input logic sclk, reset,
 
 			begin 
 
-				column<= 0;
+				column<= 34;
 
 				row<=0;
 
 			end
 		
-		else if (column == 34)
+		else if (column >= 34)
 			begin 
 				column <= 0;
 			end
