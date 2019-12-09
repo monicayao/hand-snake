@@ -2,58 +2,20 @@
 //Shivam Malpani 11/23/19
 
 #include <stdio.h>
-#include <stdbool.h>
 #include "SAM4S4B_lab7/SAM4S4B.h"
+#include "pixel.h"
+#include "accelerometer.h"
+
 #define RESET_PIN 15
 
-typedef struct {
-	bool isWall; 
-	bool isGround;
-	bool isSnake;
-	bool isFood;
-} Pixel;
+#define SELECT_LED 19
+#define SELECT_ACC 20
 
-typedef struct{
-	
-} Snake;
 Pixel board [32][32];
 int snake[20][2];
 int lenSnake; 
 int food[2];
 int eaten; 
-volatile unsigned char debug;
-volatile short x,y,z, who;
-short resetPos= 0;
-char lastInp= 'u';
-uint16_t readX[3]= {0xA9A9, 0xABAB,0xADAD};
-
-void setWall(Pixel * inputP){
-	inputP->isWall = true; 
-	inputP->isGround = false;
-	inputP->isSnake = false;
-	inputP->isFood = false;
-}
-
-void setGround(Pixel * inputP){
-	inputP->isWall = false; 
-	inputP->isGround = true;
-	inputP->isSnake = false;
-	inputP->isFood = false;
-}
-
-void setSnake(Pixel * inputP){
-	inputP->isWall = false; 
-	inputP->isGround = false;
-	inputP->isSnake = true;
-	inputP->isFood = false;
-}
-
-void setFood(Pixel * inputP){
-	inputP->isWall = false; 
-	inputP->isGround = false;
-	inputP->isSnake = false;
-	inputP->isFood = true;
-}
 
 void boardInit(){ 
 	for(int i=0; i<32; ++i){ 
@@ -67,7 +29,6 @@ void boardInit(){
 		}
 	}
 }
-
 
 //Red Snake 
 void putSnakeOnBoard(){ 
@@ -91,6 +52,7 @@ void snakeInit(){
 	}
 	putSnakeOnBoard();
 }
+
 //blue food
 void putFoodOnBoard(){
 		setFood(&board[food[1]][food[0]]); 
@@ -171,52 +133,6 @@ bool checkCollsion(){
 }
 
 
-char getAccelInp(){
-	//acclerometer logic
-	//spiInit16(5, 0, 1);
-	/*
-	debug = spiSendReceive16(0x202F); //WHO AM I 
-	who= spiSendReceive16(0x8F8F);
-	x = spiSendReceive16(readX[0]);
-	y = spiSendReceive16(readX[1]);
-	z = spiSendReceive16(readX[2]);
-	*/
-	if(x>-3 && x<6 && y>-7 && y<6 && z>60 && z<69){
-		resetPos=1;
-		return lastInp;
-	}
-
-	//right y<-27
-	else if(resetPos==1 && y<-27){
-		resetPos= 0;
-		lastInp= 'r';
-		return 'r';
-	}
-	//left  y>30 
-	else if(resetPos==1 && y>30){
-		resetPos= 0;
-		lastInp= 'l';
-		return 'l';
-	}
-	//up x> 25 
-	else if(resetPos==1 && x>25){
-		resetPos= 0;
-		lastInp= 'u';
-		return 'u';
-	}
-	//down x<-25
-	else if(resetPos==1 && x<-25){
-		resetPos= 0;
-		lastInp= 'd';
-		return 'd';
-	}
-	
-	return lastInp;
-}
-
-
-
-
 int updateGame(){
 	char inp= getAccelInp();
 	updateSnake(inp);
@@ -225,39 +141,14 @@ int updateGame(){
 	return lose;
 }	
 
-
-//Rxx- 0100- 0x04
-//xGx- 0010- 0x02
-//xxB- 0001- 0x01
-char LEDToByte(Pixel * inputP)
-{
-	char result;
-	if (inputP->isWall){
-		result = 0x07;
-	}
-	else if(inputP->isFood){
-		result= 0x06; 
-	}
-	else if(inputP->isSnake){
-		result= 0x04; 
-	}
-	else {
-		result= 0x00;
-	}
-		
-	return result;
-}
-
 void sendLED()
 {
 	pioDigitalWrite(RESET_PIN, 1);
 	pioDigitalWrite(RESET_PIN, 0);
 	int i,j; 
 	for (i = 0; i < 16; ++i){
-		for (j = 0; j < 35; ++j){
-			
-			char result= 0xFF;
-			
+		for (j = 0; j < 35; ++j){			
+			uint16_t result;			
 			if(j>=32){
 				 result= 0x00;
 			}
@@ -266,11 +157,10 @@ void sendLED()
 			 char bot = LEDToByte(&board[i+16][j]);
 			 result = (top<<3) | bot;
 			}
-			
+		
 			spiSend(result);
 		}
 	}		
-
 }
 
 int main(void){
@@ -282,14 +172,19 @@ int main(void){
 	snakeInit();
 	foodInit();
 	
-  spiInit8(5,0,1);
+  spiInit16(5,0,1);
 	
-	 pioPinMode(RESET_PIN, PIO_OUTPUT);
+	pioPinMode(RESET_PIN, PIO_OUTPUT);
+	pioPinMode(SELECT_LED, PIO_OUTPUT);
+	pioPinMode(SELECT_ACC, PIO_OUTPUT);
 
-
-	bool lose =0;
-		sendLED();
-		while(!lose){
+	// start with making both SPIs NOT slaves 
+	pioDigitalWrite(SELECT_LED, 1); 
+	pioDigitalWrite(SELECT_ACC, 1);
+	
+	bool lose = 0;
+	sendLED();
+	while(!lose){
 		lose= updateGame();
 		sendLED();
 		//volatile int i = (COUNTS_PER_MS*1000)/40; //one sec wait while reading accel
@@ -304,144 +199,3 @@ int main(void){
 	
 	return 1;
 }
-
-
-
-const char initialBoard[32][32] = {
- {'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',
-	 '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#'},  // 0
- {'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',
-	 '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#'},  // 1
- {'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 2
-  {'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 3
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 4
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 5
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 6
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 7
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 8
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 9
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 10
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 11
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 12
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 13
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '#', '#', '#', '#', '-', '-', '-', '-', '#', '#'},  // 14
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '#', '#', '#', '#', '-', '-', '-', '-', '#', '#'},  // 15
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '#', '#', '#', '#', '-', '-', '-', '-', '#', '#'},  // 16
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '#', '#', '#', '#', '-', '-', '-', '-', '#', '#'},  // 17
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 18
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 19
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 20
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 21
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 22
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 23
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 24
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 25
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 26
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 27
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 28
-	{'#', '#', '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-',
-	 '-', '-', '-', '-', '-','-', '-', '-', '-', '-', '-', '-', '-', '-', '#', '#'},  // 29
-	{'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',
-	 '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#'},  // 30
-  {'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#',
-	 '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#'},  // 31
-};
-
-
-char stringToByte(char inputChar)
-{
-	char result;
-	switch(inputChar) {
-		case '#': 
-			result = 0x01; // WALL: 0000_0111
-			break;
-		case '-':
-			result = 0x02; // GRASS: 0000_0010
-			break;
-	}
-	return result;
-}
-
-/*
-void sendLEDs()
-{
-	pioDigitalWrite(RESET_PIN, 1);
-	pioDigitalWrite(RESET_PIN, 0);
-	int i,j; 
-	for (i = 0; i < 16; ++i){
-		for (j = 0; j < 35; ++j){
-			
-			char result;
-			
-			if(j>=32){
-				 result= 0x00;
-			}
-			else{
-			 char top = stringToByte(initialBoard[i][j]);
-			 char bot = stringToByte(initialBoard[i+16][j]);
-			 result = (top<<3) | bot;
-			}
-		
-			spiSend(result);
-		 
-		}
-	}		
-
-}
-*/
-/*
-int main(void)
-{
-  samInit();
-	pioInit();
-	tcInit();
-	tcDelayInit();
-	boardInit(); 
-	snakeInit();
-	foodInit();
-	// "clock divide" = master clock frequency / desired baud rate
-  // the phase for the SPI clock is 1 and the polarity is 0
-	spiInit8(5, 0, 1);
-  
-  pioPinMode(RESET_PIN, PIO_OUTPUT);
-
-	while(1)
-	{
-		sendLED();
-		//spiSendReceive(0x1F); // -> 00_011_111 		
-		//spiSendReceive(0x12); // -> 00_010_010
-    
-		//spiSendReceive(0xFF);
-		
-	
-	}
-	//pioDigitalWrite(LOAD_PIN, 0);
-}
-*/
