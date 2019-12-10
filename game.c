@@ -4,19 +4,22 @@
 #include <stdio.h>
 #include "SAM4S4B_lab7/SAM4S4B.h"
 #include "pixel.h"
-#include "accelerometer.h"
 
 #define RESET_PIN 15
 
 #define SELECT_LED 19
 #define SELECT_ACC 20
 
+#define MS 129
+#define MS_1 128
+
+
 Pixel board [32][32];
 int snake[20][2];
 int lenSnake; 
 int food[2];
 int eaten; 
-
+char inpAcc;
 void boardInit(){ 
 	for(int i=0; i<32; ++i){ 
 		for (int j = 0; j<32; ++j){
@@ -134,8 +137,8 @@ bool checkCollsion(){
 
 
 int updateGame(){
-	char inp= getAccelInp();
-	updateSnake(inp);
+	//char inp= uartRx();
+	updateSnake(inpAcc);
 	updateFood();
 	bool lose= checkCollsion();
 	return lose;
@@ -163,6 +166,13 @@ void sendLED()
 	}		
 }
 
+void readAcc(){
+	inpAcc= uartRx();
+	while(inpAcc!='u' && inpAcc!='d' && inpAcc!='l' && inpAcc!='r' ){
+		inpAcc= uartRx();
+	}
+}
+
 int main(void){
 	samInit();
   pioInit();
@@ -173,29 +183,39 @@ int main(void){
 	foodInit();
 	
   spiInit16(5,0,1);
+	uartInit(0,140);
 	
 	pioPinMode(RESET_PIN, PIO_OUTPUT);
 	pioPinMode(SELECT_LED, PIO_OUTPUT);
 	pioPinMode(SELECT_ACC, PIO_OUTPUT);
 
+	tcChannelInit(TC_CH0_ID,  TC_CLK2_ID, TC_MODE_UP); // mck/8 and counter just goes up with no comparison to RC
+	tcChannelInit(TC_CH1_ID,  TC_CLK2_ID, TC_MODE_UP); 
+	
 	// start with making both SPIs NOT slaves 
 	pioDigitalWrite(SELECT_LED, 1); 
 	pioDigitalWrite(SELECT_ACC, 1);
 	
 	bool lose = 0;
-	sendLED();
+	unsigned long end = MS*4000/8;
+	unsigned long end1 = MS_1*4000/8;
 	while(!lose){
 		lose= updateGame();
 		sendLED();
-		//volatile int i = (COUNTS_PER_MS*1000)/40; //one sec wait while reading accel
-		//volatile int i = 3;
-		//while(--i){
-		//	char inp= getAccelInp();
-		//}
+		
+		tcResetChannel(TC_CH1_ID);
+		while (tcReadChannel(TC_CH1_ID) < end1){
+			tcResetChannel(TC_CH0_ID);
+			while (tcReadChannel(TC_CH0_ID) < end){
+				sendLED();
+				readAcc();
+				
+			}
 	}
-		while(1){
+		
+	}
+	while(1){
 		sendLED();
 	}
-	
 	return 1;
 }
