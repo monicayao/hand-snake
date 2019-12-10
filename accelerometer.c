@@ -4,11 +4,8 @@
 ////////////////////////////////////////////////
 // #includes
 ////////////////////////////////////////////////
-//#ifndef ACCELEROMETER
-//#define ACCELEROMETER
-
 #include <stdio.h>
-#include "SAM4S4B_lab7/SAM4S4B.h"
+#include "../SAM4S4B/SAM4S4B.h"
 #define ACC_PIN 8
 
 short resetPos= 0;
@@ -20,7 +17,6 @@ char readAcc;
 
 char getAccelInp(){
 	//acclerometer logic
-	//spiInit16(5, 0, 1);
 	
 	debug = spiSendReceive16(0x202F); //WHO AM I 
 	who= spiSendReceive16(0x8F8F);
@@ -71,8 +67,11 @@ int main(void){
 
 	while(1){
 		readAcc= getAccelInp();
-		uartTx(readAcc);
+		while(!uartRxReady()); 
+		if (uartRx() == 'g'){
+			uartTx(readAcc);
+		}
 	}
+	
 	return 1;
 }
-

@@ -2,8 +2,10 @@
 //Shivam Malpani 11/23/19
 
 #include <stdio.h>
-#include "SAM4S4B_lab7/SAM4S4B.h"
+#include <stdlib.h> // for rand()
+#include "../SAM4S4B/SAM4S4B.h"
 #include "pixel.h"
+#include "lose.h"
 
 #define RESET_PIN 15
 
@@ -61,7 +63,7 @@ void putFoodOnBoard(){
 		setFood(&board[food[1]][food[0]]); 
 }
 void removeFoodOnBoard(){
-	setFood(&board[food[1]][food[0]]); 
+		setGround(&board[food[1]][food[0]]); 
 }
 
 void foodInit(){ 
@@ -71,15 +73,21 @@ void foodInit(){
 }
 
 // UPDATE FUNCTIONS
+void generateRandomFood(){ 
+	int x = rand() % 25 + 4; //4-28 
+	int y = rand() % 25 + 4;
+	while(board[y][x].isSnake){
+			x = rand() % 25 + 4; //4-28 
+			y = rand() % 25 + 4;
+	}
+	food[0] = x;
+	food[1] = y;
+}
+
 void updateFood(){
 	if(eaten){
 		removeFoodOnBoard();
-		++food[0];
-		++food[1];
-		if(food[0]>29){
-			food[0]=3;
-			food[1]=3;
-		}
+		generateRandomFood();
 		putFoodOnBoard();
 		eaten=0;
 	}
@@ -167,10 +175,11 @@ void sendLED()
 }
 
 void readAcc(){
+	while (!uartRxReady());
 	inpAcc= uartRx();
-	while(inpAcc!='u' && inpAcc!='d' && inpAcc!='l' && inpAcc!='r' ){
+	/*while(inpAcc!='u' && inpAcc!='d' && inpAcc!='l' && inpAcc!='r' ){
 		inpAcc= uartRx();
-	}
+	}*/
 }
 
 int main(void){
@@ -207,6 +216,7 @@ int main(void){
 		while (tcReadChannel(TC_CH1_ID) < end1){
 			tcResetChannel(TC_CH0_ID);
 			while (tcReadChannel(TC_CH0_ID) < end){
+				uartTx('f'); // sends a char through UART, f standing for feedback
 				sendLED();
 				readAcc();
 				
@@ -215,7 +225,8 @@ int main(void){
 		
 	}
 	while(1){
-		sendLED();
+		sendLoseScreen();
 	}
 	return 1;
 }
+
