@@ -66,8 +66,8 @@ void removeFoodOnBoard(){
 }
 
 void foodInit(){ 
-	food[0]=3; 
-	food[1]=3; 
+	food[0]=16; 
+	food[1]=7; 
 	putFoodOnBoard();
 }
 
@@ -155,8 +155,19 @@ void sendLED()
 				 result= 0x00;
 			}
 			else{
-			 char top = LEDToByte(&board[i][j]);
-			 char bot = LEDToByte(&board[i+16][j]);
+				char top, bot;
+				if(i==snake[0][1] && j==snake[0][0]){
+					top= 0x01;
+				}
+				else{
+				 top = LEDToByte(&board[i][j]);
+				}
+				if(i+16==snake[0][1] && j==snake[0][0]){
+					bot=0x01;
+				}
+				else{
+			  bot = LEDToByte(&board[i+16][j]);
+				}
 			 result = (top<<3) | bot;
 			}
 		
