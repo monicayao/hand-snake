@@ -1,7 +1,8 @@
 //E155 Final Project
-//Shivam Malpani and Monica Yao 12/11/19
+//Shivam Malpani 11/23/19
 
 #include <stdio.h>
+#include <stdlib.h> 
 #include "SAM4S4B_lab7/SAM4S4B.h"
 #include "pixel.h"
 
@@ -74,12 +75,10 @@ void foodInit(){
 void updateFood(){
 	if(eaten){
 		removeFoodOnBoard();
-		++food[0];
-		++food[1];
-		if(food[0]>29){
-			food[0]=3;
-			food[1]=3;
-		}
+		do{
+			food[0]= rand()%29;
+			food[1]= rand()%29;
+		}while(board[food[1]][food[0]].isSnake || food[0]<4 || food[1]<4);
 		putFoodOnBoard();
 		eaten=0;
 	}
@@ -168,7 +167,7 @@ void sendLED()
 
 void readAcc(){
 	inpAcc= uartRx();
-	while(inpAcc!='u' && inpAcc!='d' && inpAcc!='l' && inpAcc!='r' ){
+	while(inpAcc!='u' && inpAcc!='d' && inpAcc!='l' && inpAcc!='r'){
 		inpAcc= uartRx();
 	}
 }
@@ -199,18 +198,23 @@ int main(void){
 	bool lose = 0;
 	unsigned long end = MS*4000/8;
 	unsigned long end1 = MS_1*4000/8;
+	int temp=400;
+	while(--temp){
+		sendLED();
+	}
 	while(!lose){
 		lose= updateGame();
 		sendLED();
-		
-		tcResetChannel(TC_CH1_ID);
-		while (tcReadChannel(TC_CH1_ID) < end1){
-			tcResetChannel(TC_CH0_ID);
-			while (tcReadChannel(TC_CH0_ID) < end){
-				sendLED();
-				readAcc();
-				
-			}
+		for(int c=0; c<3; ++c){
+			tcResetChannel(TC_CH1_ID);
+			while (tcReadChannel(TC_CH1_ID) < end1){
+				tcResetChannel(TC_CH0_ID);
+				while (tcReadChannel(TC_CH0_ID) < end){
+					sendLED();
+					readAcc();
+					
+				}
+		}
 	}
 		
 	}
@@ -219,3 +223,4 @@ int main(void){
 	}
 	return 1;
 }
+
