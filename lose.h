@@ -38,6 +38,7 @@ const char loseBoard[32][32] = {
  {'#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#'},  // 31
 };
 
+/* Converts the string to a the corresponding character based on the color scheme decided. */
 char stringToByte(char inputChar)
 {
 	char result;
@@ -55,6 +56,7 @@ char stringToByte(char inputChar)
 	return result;
 }
 
+/* Sends the lose screen to the LED. The logic is the same as the one in LEDToByte */
 void sendLoseScreen()
 {
 	pioDigitalWrite(RESET_PIN, 1);
