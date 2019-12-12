@@ -164,7 +164,7 @@ bool checkCollsion(){
 	return 0;
 }
 
-
+/* this method calls other update methods to update the entire game */
 int updateGame(){
 	//char inp= uartRx();
 	updateSnake(inpAcc);
@@ -173,6 +173,8 @@ int updateGame(){
 	return lose;
 }	
 
+/* This method sends the LED data one pixel at a time. It sends 35*2 bytes for every row since 32*2 bytes send pixel data 
+   and 3*2 bytes are for shifting the bytes in. */
 void sendLED()
 {
 	pioDigitalWrite(CS, 1);
@@ -206,6 +208,7 @@ void sendLED()
 	}		
 }
 
+/* Reads a char for user input from the acclerometer. This information is send either via wired UART or bluetooth UART */
 void readAcc(){
 	inpAcc= uartRx();
 	while(inpAcc!='u' && inpAcc!='d' && inpAcc!='l' && inpAcc!='r'){
@@ -213,6 +216,7 @@ void readAcc(){
 	}
 }
 
+/* The main gets all the differnent pieces together and uses a timer to play the game at a decent pace. */
 int main(void){
 	samInit();
   pioInit();
@@ -242,7 +246,7 @@ int main(void){
 	int temp=400;
 	while(--temp){
 		sendLED();
-	}
+	} //To display the game for a few moments before the game starts. 
 	while(!lose){
 		lose= updateGame();
 		sendLED();
@@ -259,6 +263,7 @@ int main(void){
 	}
 		
 	}
+	//The game ends if the player loses. 
 	while(1){
 		sendLoseScreen();
 	}
