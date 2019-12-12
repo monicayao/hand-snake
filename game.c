@@ -5,8 +5,9 @@
 #include <stdlib.h> 
 #include "SAM4S4B_lab7/SAM4S4B.h"
 #include "pixel.h"
+#include "lose.h"
 
-#define RESET_PIN 15
+#define CS 15 //Chip select 
 
 #define SELECT_LED 19
 #define SELECT_ACC 20
@@ -34,18 +35,31 @@ void boardInit(){
 	}
 }
 
-//Red Snake 
+/*
+This method puts the snanke on the board.
+It sets the board pixels to a isSnake for every 
+unit of the snake. 
+*/
 void putSnakeOnBoard(){ 
 	for(int i=0; i<lenSnake; ++i){
 		setSnake(&board[snake[i][1]][snake[i][0]]); 
 	}
 } 
+
+/*
+This method removes the snake off the board. It does this by 
+setting every pixel of the board that was previously a snake, 
+to the ground. 
+*/
 void removeSnakeOnBoard(){
 		for(int i=0; i<lenSnake; ++i){
 		setGround(&board[snake[i][1]][snake[i][0]]); 
 	}
 }
-
+/*
+Initilizes a snake of length 5 in the middle of the board.
+This method also places the snake on the board. 
+*/
 void snakeInit(){ 
 	int initPos_X= 16;
 	int initPos_Y= 16; 
@@ -57,14 +71,21 @@ void snakeInit(){
 	putSnakeOnBoard();
 }
 
-//blue food
+/*
+This method puts the food on the board by setting 
+a pixel of the board to isFood. 
+*/ 
 void putFoodOnBoard(){
 		setFood(&board[food[1]][food[0]]); 
 }
+
+/* This method removes the food off the board by setting the pixel of 
+the board that was previously food to ground.*/ 
 void removeFoodOnBoard(){
-	setFood(&board[food[1]][food[0]]); 
+	setGround(&board[food[1]][food[0]]); 
 }
 
+/* This method initilizes food to a location on the upper half of the board. */
 void foodInit(){ 
 	food[0]=16; 
 	food[1]=7; 
@@ -72,6 +93,10 @@ void foodInit(){
 }
 
 // UPDATE FUNCTIONS
+
+/* It checks if the food was eaten. If it is eaten 
+it updates the location of the food to a new random location 
+on the board. */ 
 void updateFood(){
 	if(eaten){
 		removeFoodOnBoard();
@@ -84,6 +109,8 @@ void updateFood(){
 	}
 }
 
+/* This method updates the position of the snake as it moves. The direction the snake moves 
+   depends on user input which is passed in as a character. */
 void updateSnake(char move){
 	removeSnakeOnBoard();
 	int nextPos_X= snake[0][0];
@@ -118,14 +145,17 @@ void updateSnake(char move){
 	putSnakeOnBoard();
 }
 
+/* This method checks if the snake has collided with a wall or itself */
 bool checkCollsion(){
 	volatile int i=0;
 	volatile int j=0;
 	for(i=0; i<lenSnake; ++i){
+		//checks for wall collisions
 		if(snake[i][0]<3 || snake[i][1]<3 || snake[i][0]>29 || snake[i][1]>29){
 			return 1;
 		}
 		for(j=0; j<i; ++j){
+			//
 			if(i!=j && snake[i][0] ==snake[j][0] && snake[i][1]==snake[j][1]){
 				return 1;
 			}
@@ -145,8 +175,8 @@ int updateGame(){
 
 void sendLED()
 {
-	pioDigitalWrite(RESET_PIN, 1);
-	pioDigitalWrite(RESET_PIN, 0);
+	pioDigitalWrite(CS, 1);
+	pioDigitalWrite(CS, 0);
 	int i,j; 
 	for (i = 0; i < 16; ++i){
 		for (j = 0; j < 35; ++j){			
@@ -195,7 +225,7 @@ int main(void){
   spiInit16(5,0,1);
 	uartInit(0,140);
 	
-	pioPinMode(RESET_PIN, PIO_OUTPUT);
+	pioPinMode(CS, PIO_OUTPUT);
 	pioPinMode(SELECT_LED, PIO_OUTPUT);
 	pioPinMode(SELECT_ACC, PIO_OUTPUT);
 
@@ -230,7 +260,7 @@ int main(void){
 		
 	}
 	while(1){
-		sendLED();
+		sendLoseScreen();
 	}
 	return 1;
 }
