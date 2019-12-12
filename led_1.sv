@@ -40,7 +40,7 @@ module led_matrix(input logic sclk, chip_select,
 	assign rgb1 = led_data[5:3];
 	assign rgb2 = led_data[2:0];
 
-	
+	//The values of column and row are updated on row and column. 
 	always_ff@(negedge sclk, posedge chip_select)
 		if(chip_select)
 			begin 
@@ -59,7 +59,7 @@ module led_matrix(input logic sclk, chip_select,
 			end
 
 	
-
+	//Input is sent to the LED on posedge. 
 	always_ff @(posedge sclk, posedge chip_select)
 		
 		if (chip_select)
@@ -75,7 +75,7 @@ module led_matrix(input logic sclk, chip_select,
 				{r2, g2, b2} <= rgb2; 
 			end
 			
-
+	//combinational logic for latch and output enable/blank. 
 	always_comb 
 		begin
 		oe= ~(column==33);//~(column>31&& column<34);
@@ -89,7 +89,7 @@ module led_matrix(input logic sclk, chip_select,
 	assign d = row[3];
 endmodule 
 
-
+// Read in 35*2 bytes from the ATSAM. 
 module spi_slave_read(input  logic sck, chip_select, 
                input  logic sdi,
                output  logic done,
